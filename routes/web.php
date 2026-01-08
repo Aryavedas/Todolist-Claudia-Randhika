@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TodoController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Config;
 
 // Home setelah login
 Route::get('/', [TodoController::class, 'index'])
@@ -17,26 +18,26 @@ Route::put(
 )->middleware(['auth'])->name('home.todos.update');
 
 Route::get('/reset-db-hard', function () {
+    // 1. BYPASS CACHE DATABASE (Kunci Solusinya Disini!)
+    // Kita paksa Laravel pakai 'array' (RAM) saja sementara, 
+    // supaya tidak mencari tabel 'cache' yang belum ada.
+    Config::set('cache.default', 'array');
+    Config::set('session.driver', 'array');
+
     try {
-        // 1. Bersihkan Cache Laravel agar konfigurasi fresh
-        Artisan::call('config:clear');
-        Artisan::call('cache:clear');
+        // 2. HAPUS PAKSA SCHEMA (Cara Postgres)
+        // Ini lebih kuat daripada migrate:fresh biasa
+        // Ini akan menghapus semua tabel, view, dan sequence tanpa ampun.
+        DB::statement('DROP SCHEMA public CASCADE');
+        DB::statement('CREATE SCHEMA public');
 
-        // 2. Paksa Hapus Semua Tabel & Migrasi Ulang (Fresh)
-        Artisan::call('migrate:fresh --force --seed');
+        // 3. JALANKAN MIGRASI
+        // Karena schema sudah kosong melompong, migrate akan jalan lancar
+        Artisan::call('migrate --force --seed');
 
-        return "BERHASIL! Database sudah di-reset total. Silakan hapus route ini dan coba Register sekarang.";
+        return "SUKSES TOTAL! Database sudah bersih dan Cache driver berhasil di-bypass. Silakan coba Register sekarang.";
     } catch (\Exception $e) {
-        // Jika masih error, kita coba paksa wipe manual schema public (khusus Postgres)
-        try {
-            DB::statement('DROP SCHEMA public CASCADE');
-            DB::statement('CREATE SCHEMA public');
-            Artisan::call('migrate --force --seed');
-
-            return "BERHASIL (Lewat Jalur Wipe Schema)! Database bersih. Silakan coba Register.";
-        } catch (\Exception $e2) {
-            return "GAGAL TOTAL. Error 1: " . $e->getMessage() . " | Error 2: " . $e2->getMessage();
-        }
+        return "Masih Error: " . $e->getMessage();
     }
 });
 

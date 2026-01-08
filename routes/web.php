@@ -18,26 +18,44 @@ Route::put(
 )->middleware(['auth'])->name('home.todos.update');
 
 Route::get('/reset-db-hard', function () {
-    // 1. BYPASS CACHE DATABASE (Kunci Solusinya Disini!)
-    // Kita paksa Laravel pakai 'array' (RAM) saja sementara, 
-    // supaya tidak mencari tabel 'cache' yang belum ada.
+    // 1. MATIKAN CACHE & SESSION DATABASE
+    // Supaya Laravel TIDAK PERNAH mencari tabel 'cache' atau 'sessions'
     Config::set('cache.default', 'array');
     Config::set('session.driver', 'array');
 
     try {
-        // 2. HAPUS PAKSA SCHEMA (Cara Postgres)
-        // Ini lebih kuat daripada migrate:fresh biasa
-        // Ini akan menghapus semua tabel, view, dan sequence tanpa ampun.
-        DB::statement('DROP SCHEMA public CASCADE');
-        DB::statement('CREATE SCHEMA public');
+        // 2. PUTUS KONEKSI LAMA (PENTING UNTUK NEON)
+        // Ini me-reset status "transaction aborted" yang nyangkut
+        DB::purge('pgsql');
+        DB::reconnect('pgsql');
 
-        // 3. JALANKAN MIGRASI
-        // Karena schema sudah kosong melompong, migrate akan jalan lancar
-        Artisan::call('migrate --force --seed');
+        // 3. HAPUS SEMUA TABEL SECARA MANUAL (CASCADE)
+        // Kita tidak pakai migrate:fresh dulu, kita hancurkan manual
+        $schema = 'public';
 
-        return "SUKSES TOTAL! Database sudah bersih dan Cache driver berhasil di-bypass. Silakan coba Register sekarang.";
+        // Matikan foreign key check
+        DB::statement('SET CONSTRAINTS ALL DEFERRED');
+
+        // Hapus Schema Public dan Buat Ulang (Cara Paling Bersih di Postgres)
+        // Menggunakan unprepared agar tidak dibungkus transaction laravel
+        DB::unprepared('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
+
+        // 4. JALANKAN MIGRASI DARI NOL
+        Artisan::call('migrate --force');
+
+        return "✅ SUKSES BESAR! Database sudah bersih total. Silakan hapus route ini dan Register sekarang.";
     } catch (\Exception $e) {
-        return "Masih Error: " . $e->getMessage();
+        // Jika masih gagal, kita coba cara fallback: Hapus tabel satu per satu
+        try {
+            $tables = DB::select("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
+            foreach ($tables as $table) {
+                DB::statement('DROP TABLE IF EXISTS "' . $table->tablename . '" CASCADE');
+            }
+            Artisan::call('migrate --force');
+            return "✅ SUKSES (Jalur Fallback)! Database bersih. Silakan Register.";
+        } catch (\Exception $ex) {
+            return "❌ MASIH ERROR: " . $e->getMessage() . " || " . $ex->getMessage();
+        }
     }
 });
 

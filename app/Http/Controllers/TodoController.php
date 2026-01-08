@@ -4,41 +4,33 @@ namespace App\Http\Controllers;
 
 use App\Models\Todo;
 use Illuminate\Http\Request;
-use Illuminate\Support\Benchmark;
 use Illuminate\Support\Facades\DB;
 
 class TodoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $todos = Todo::orderBy('created_at', 'desc')->lazy();
+        $todos = Todo::where('user_id', auth()->id())
+            ->orderBy('created_at', 'desc')
+            ->lazy();
 
         return view('home', compact('todos'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         return view('create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
-            "title" => "string|required",
-            "description" => "string|required"
+            "title" => "required|string",
+            "description" => "required|string"
         ]);
 
         DB::table('todos')->insert([
-            'user_id' => 1,
+            'user_id' => auth()->id(), // 🔐 user login
             'title' => $request->title,
             'description' => $request->description,
             'is_completed' => false,
@@ -51,30 +43,27 @@ class TodoController extends Controller
             ->with('success', 'Todo berhasil dibuat');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Todo $todo)
     {
+        $this->authorizeTodo($todo);
+
         return view('show', compact('todo'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Todo $todo)
     {
+        $this->authorizeTodo($todo);
+
         return view('todos.edit-todo', compact('todo'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Todo $todo)
     {
+        $this->authorizeTodo($todo);
+
         $request->validate([
-            "title" => "string|required",
-            "description" => "string|required",
+            "title" => "required|string",
+            "description" => "required|string",
             "is_completed" => "nullable|boolean"
         ]);
 
@@ -89,11 +78,10 @@ class TodoController extends Controller
             ->with('success', 'Todo berhasil diupdate');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Todo $todo)
     {
+        $this->authorizeTodo($todo);
+
         $todo->delete();
 
         return redirect()
@@ -103,6 +91,8 @@ class TodoController extends Controller
 
     public function updateByClickToggle(Request $request, Todo $todo)
     {
+        $this->authorizeTodo($todo);
+
         $request->validate([
             'is_completed' => 'required|boolean',
         ]);
@@ -112,5 +102,13 @@ class TodoController extends Controller
         ]);
 
         return redirect()->back();
+    }
+
+    /**
+     * 🔐 Helper sederhana (tidak ribet)
+     */
+    private function authorizeTodo(Todo $todo)
+    {
+        abort_if($todo->user_id !== auth()->id(), 403);
     }
 }

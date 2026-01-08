@@ -92,28 +92,31 @@
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <div class="flex-shrink-0 flex items-center gap-2">
-                    <div
-                        class="w-8 h-8 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-purple-200">
-                        <i class="fa-solid fa-check"></i>
-                    </div>
-                    <span
-                        class="font-extrabold text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500">
-                        FunTodo
-                    </span>
+                    <a href="{{ route('todos.index') }}" class="flex items-center gap-2 group">
+                        <div
+                            class="w-8 h-8 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-purple-200 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <span
+                            class="font-extrabold text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500">
+                            FunTodo
+                        </span>
+                    </a>
                 </div>
 
                 <div class="relative group">
                     <button id="user-menu-button"
                         class="flex items-center gap-3 focus:outline-none transition-opacity hover:opacity-80">
                         <div class="text-right hidden sm:block">
-                            <p class="text-sm font-bold text-gray-700 leading-none">
-                                {{ auth()->user()->name ?? 'Guest' }}</p>
+                            <p class="text-sm font-bold text-gray-700 leading-none">{{ Auth::user()->name }}</p>
                             <p class="text-[10px] text-gray-400 font-medium">Explorer</p>
                         </div>
+
                         <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 p-[2px]">
-                            <div class="w-full h-full rounded-full bg-white flex items-center justify-center">
+                            <div
+                                class="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                                 <span class="font-bold text-indigo-500 text-sm">
-                                    {{ substr(auth()->user()->name ?? 'G', 0, 1) }}
+                                    {{ substr(Auth::user()->name, 0, 1) }}
                                 </span>
                             </div>
                         </div>
@@ -123,13 +126,24 @@
 
                     <div
                         class="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl shadow-purple-100 border border-gray-100 overflow-hidden transform scale-95 opacity-0 invisible group-hover:scale-100 group-hover:opacity-100 group-hover:visible transition-all duration-200 origin-top-right z-50">
+
                         <div class="px-4 py-3 bg-gray-50 border-b border-gray-100 sm:hidden">
-                            <p class="text-sm font-bold text-gray-700">{{ auth()->user()->name ?? 'Guest' }}</p>
+                            <p class="text-sm font-bold text-gray-700 truncate">{{ Auth::user()->name }}</p>
+                            <p class="text-xs text-gray-500 truncate">{{ Auth::user()->email }}</p>
                         </div>
-                        <a href="#"
+
+                        <a href="{{ route('profile.edit') }}"
                             class="block px-4 py-2 text-sm text-gray-600 hover:bg-purple-50 hover:text-purple-600 transition-colors">
-                            <i class="fa-regular fa-user mr-2"></i> Profile
+                            <i class="fa-regular fa-user mr-2 w-4 text-center"></i> Profile
                         </a>
+
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit"
+                                class="w-full text-left block px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                                <i class="fa-solid fa-arrow-right-from-bracket mr-2 w-4 text-center"></i> Log Out
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

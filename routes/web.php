@@ -17,10 +17,11 @@ Route::put(
 
 Route::get('/setup-database', function () {
     try {
-        // Menjalankan migrasi database
-        Artisan::call('migrate --force');
-        return 'Sukses! Database berhasil dibuat. Silakan hapus route ini dan coba Register lagi.';
+        Artisan::call('migrate:fresh --force --seed');
+
+        return 'Sukses! Database berhasil di-reset dan dibuat ulang. Sekarang coba Register lagi.';
     } catch (\Exception $e) {
+        // Tampilkan error lengkap biar kita tahu kenapa
         return 'Gagal: ' . $e->getMessage();
     }
 });

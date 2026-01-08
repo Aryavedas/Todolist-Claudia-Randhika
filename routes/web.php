@@ -18,12 +18,48 @@ Route::put(
 )->middleware(['auth'])->name('home.todos.update');
 
 Route::get('/db-setup', function () {
+    Config::set('cache.default', 'array');
+    Config::set('session.driver', 'array');
+
     try {
-        // Jalankan migrasi
-        Artisan::call('migrate --force');
-        return 'BERHASIL! Database sudah siap. Silakan Register.';
+        // 1. PUTUS SEMUA KONEKSI AKTIF
+        DB::purge('pgsql');
+        
+        // 2. BUAT KONEKSI BARU DENGAN PDO LANGSUNG (Bypass Laravel)
+        $host = config('database.connections.pgsql.host');
+        $port = config('database.connections.pgsql.port');
+        $database = config('database.connections.pgsql.database');
+        $username = config('database.connections.pgsql.username');
+        $password = config('database.connections.pgsql.password');
+        
+        $dsn = "pgsql:host={$host};port={$port};dbname={$database};sslmode=require";
+        $pdo = new PDO($dsn, $username, $password, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_AUTOCOMMIT => true, // KUNCI: Auto commit tanpa transaction
+        ]);
+        
+        // 3. ROLLBACK transaksi yang gagal
+        $pdo->exec('ROLLBACK');
+        
+        // 4. HAPUS DAN BUAT ULANG SCHEMA
+        $pdo->exec('DROP SCHEMA IF EXISTS public CASCADE');
+        $pdo->exec('CREATE SCHEMA public');
+        $pdo->exec('GRANT ALL ON SCHEMA public TO PUBLIC');
+        $pdo->exec('GRANT ALL ON SCHEMA public TO neondb_owner');
+        
+        // 5. TUTUP KONEKSI PDO
+        $pdo = null;
+        
+        // 6. RECONNECT LARAVEL
+        DB::reconnect('pgsql');
+        
+        // 7. JALANKAN MIGRASI (Laravel sudah reconnect ke DB yang bersih)
+        Artisan::call('migrate', ['--force' => true]);
+        
+        return "✅ SUKSES TOTAL! Database sudah bersih. Silakan register.";
+        
     } catch (\Exception $e) {
-        return 'Error: ' . $e->getMessage();
+        return "❌ ERROR: " . $e->getMessage() . "<br><br>Trace: " . $e->getTraceAsString();
     }
 });
 

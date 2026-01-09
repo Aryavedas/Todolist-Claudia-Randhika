@@ -30,7 +30,7 @@ Route::get('/setup-db-fresh', function () {
 
         // 3. Jalankan Migrasi & Seeder
         // --force wajib untuk Vercel (Production)
-        Artisan::call('migrate --force --seed');
+        Artisan::call('migrate --force');
 
         return 'BERHASIL! Database sudah di-reset total dari nol. Silakan coba Register sekarang.';
     } catch (\Exception $e) {
